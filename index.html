@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>垂坤食品 2025 旗艦訂購單</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        input[type="number"], input[type="text"] { font-size: 16px !important; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .item-card.selected { border-color: #ef4444; background-color: #fef2f2; }
+        .category-header { position: sticky; top: 120px; z-index: 20; }
+        input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        .oos-card { opacity: 0.5; grayscale: 100%; pointer-events: none; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900 pb-44">
+
+    <!-- 頂部固定區域 -->
+    <header class="sticky top-0 z-50 bg-white border-b border-slate-200 shadow-sm">
+        <div class="p-4 max-w-2xl mx-auto">
+            <h1 class="text-xl font-black text-center text-red-600 italic tracking-tighter">CHUI KUN 垂坤旗艦訂購單</h1>
+            
+            <div class="mt-3 relative">
+                <input type="text" id="searchInput" oninput="handleSearch()" placeholder="🔍 搜尋品名 (如: 肉鬆, 咖啡, 餅乾...)" 
+                       class="w-full bg-slate-100 border-none rounded-2xl py-3 px-11 focus:ring-2 focus:ring-red-500 transition-all shadow-inner">
+            </div>
+
+            <!-- 分類快速跳轉 -->
+            <div id="categoryNav" class="flex overflow-x-auto gap-2 mt-3 no-scrollbar py-1">
+                <!-- JS 動態生成 -->
+            </div>
+        </div>
+    </header>
+
+    <!-- 商品列表 -->
+    <main id="listContainer" class="p-4 max-w-2xl mx-auto space-y-3">
+        <!-- JS 動態生成項目 -->
+    </main>
+
+    <!-- 底部功能列 -->
+    <footer class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-4 shadow-[0_-5px_15px_rgba(0,0,0,0.05)] z-50">
+        <div class="max-w-2xl mx-auto">
+            <div class="flex justify-between items-end mb-4 px-2">
+                <div>
+                    <p class="text-xs text-slate-400 font-bold uppercase tracking-widest">已選商品</p>
+                    <p class="text-lg font-bold text-slate-800"><span id="totalItems" class="text-red-600 text-xl">0</span> 件</p>
+                </div>
+                <div class="text-right">
+                    <p class="text-xs text-slate-400 font-bold uppercase tracking-widest">預估總額</p>
+                    <p class="text-2xl font-black text-red-600">$ <span id="totalAmount">0</span></p>
+                </div>
+            </div>
+            
+            <div class="flex gap-2">
+                <button onclick="resetOrder()" class="bg-slate-100 text-slate-500 px-4 py-4 rounded-2xl font-bold active:bg-slate-200 transition">
+                    重設
+                </button>
+                <button onclick="copyOrder()" class="flex-grow bg-red-600 hover:bg-red-700 text-white font-bold py-4 rounded-2xl shadow-lg flex items-center justify-center gap-2 active:scale-[0.98] transition">
+                    📋 複製清單至 LINE
+                </button>
+            </div>
+        </div>
+    </footer>
+
+    <div id="toast" class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-slate-800 text-white px-8 py-4 rounded-3xl opacity-0 pointer-events-none transition-all duration-300 z-[100] font-bold shadow-2xl">
+        已複製到剪貼簿
+    </div>
+
+    <script>
+        // 完全根據您提供的文字清單整理
+        const products = [
+            // 肉鬆類
+            { cat: "肉鬆類", name: "特製肉脯鬆", unit: "1包", price: 150 },
+            { cat: "肉鬆類", name: "海苔肉鬆", unit: "1包", price: 150 },
+            { cat: "肉鬆類", name: "兒童肉鬆", unit: "1包", price: 150 },
+            { cat: "肉鬆類", name: "純肉鬆", unit: "1包", price: 150 },
+            { cat: "肉鬆類", name: "肉脯", unit: "1包", price: 150 },
+            { cat: "肉鬆類", name: "肉鬆小脆餅", unit: "1包", price: 150 },
+            
+            // 冷凍類
+            { cat: "冷凍類", name: "港式蘿蔔糕", unit: "1包", price: 80 },
+
+            // 豬肉類
+            { cat: "豬肉類", name: "(新品)柚香肉干", unit: "1包", price: 200 },
+            { cat: "豬肉類", name: "原味筷子肉干", unit: "1包", price: 200 },
+            { cat: "豬肉類", name: "泰式方塊肉干", unit: "1包", price: 200 },
+            { cat: "豬肉類", name: "泰式筷子肉干", unit: "1包", price: 200 },
+            { cat: "豬肉類", name: "原味肉條", unit: "1包", price: 200 },
+            { cat: "豬肉類", name: "大絲肉條", unit: "1包", price: 200 },
+            { cat: "豬肉類", name: "豬肉片", unit: "1包", price: 200 },
+            { cat: "豬肉類", name: "麻辣豬肉片", unit: "1包", price: 200 },
+            { cat: "豬肉類", name: "沙茶豬肉片", unit: "1包", price: 200 },
+            { cat: "豬肉類", name: "豬肉條", unit: "1包", price: 200 },
+            { cat: "豬肉類", name: "檸檬豬肉條", unit: "1包", price: 200 },
+            { cat: "豬肉類", name: "黑胡椒豬肉條", unit: "1包", price: 200 },
+            { cat: "豬肉類", name: "豬肉角", unit: "1包", price: 300 },
+            { cat: "豬肉類", name: "黑胡椒厚肉干", unit: "1包", price: 200 },
+            { cat: "豬肉類", name: "原味薄肉干", unit: "1包", price: 200 },
+            { cat: "豬肉類", name: "黑胡椒薄肉干", unit: "1包", price: 200 },
+            { cat: "豬肉類", name: "原味杏仁肉干", unit: "1包", price: 200 },
+            { cat: "豬肉類", name: "黑胡椒杏仁肉干", unit: "1包", price: 200 },
+            { cat: "豬肉類", name: "原味檸檬肉干", unit: "1包", price: 200 },
+            { cat: "豬肉類", name: "辣味檸檬肉干", unit: "1包", price: 200 },
+            { cat: "豬肉類", name: "蜜汁肉干", unit: "1包", price: 200 },
+
+            // 魚製品類
+            { cat: "魚製品類", name: "[新品]麻辣魚皮", unit: "1包", price: 100 },
+            { cat: "魚製品類", name: "[新品]糖粒紅片", unit: "1包", price: 100 },
+            { cat: "魚製品類", name: "[新品]勁辣魚片", unit: "1包", price: 50 },
+            { cat: "魚製品類", name: "古早味紅片", unit: "1包", price: 50 },
+            { cat: "魚製品類", name: "鱈魚香絲", unit: "1包", price: 50 },
+            { cat: "魚製品類", name: "香烤魷魚片", unit: "1包", price: 200 },
+            { cat: "魚製品類", name: "小燒卷", unit: "1包", price: 200 },
+            { cat: "魚製品類", name: "飛卷片", unit: "1包", price: 200 },
+            { cat: "魚製品類", name: "魷魚絲", unit: "1包", price: 200 },
+            { cat: "魚製品類", name: "碳烤絲", unit: "1包", price: 200 },
+            { cat: "魚製品類", name: "魷魚片", unit: "1包", price: 200 },
+            { cat: "魚製品類", name: "旗魚鬆", unit: "1包", price: 150 },
+            { cat: "魚製品類", name: "旗魚脯", unit: "1包", price: 150 },
+            { cat: "魚製品類", name: "柴魚丁角", unit: "1包", price: 150 },
+            { cat: "魚製品類", name: "鮪魚丁角", unit: "1包", price: 150 },
+            { cat: "魚製品類", name: "黑胡椒切片鱈魚風味", unit: "1包", price: 150 },
+            { cat: "魚製品類", name: "塔香切片鱈魚風味", unit: "1包", price: 150 },
+            { cat: "魚製品類", name: "魯肉切片鱈魚風味", unit: "1包", price: 150 },
+            { cat: "魚製品類", name: "麻辣切片鱈魚風味", unit: "1包", price: 150 },
+            { cat: "魚製品類", name: "黑芝麻鱈魚香絲", unit: "1包", price: 200 },
+            { cat: "魚製品類", name: "鱈魚風味條", unit: "1包", price: 100 },
+            { cat: "魚製品類", name: "烘烤片", unit: "1包", price: 100 },
+            { cat: "魚製品類", name: "香之魚", unit: "1包", price: 100 },
+            { cat: "魚製品類", name: "海苔酥片", unit: "1包", price: 90 },
+            { cat: "魚製品類", name: "杏仁酥片", unit: "1包", price: 90 },
+
+            // 牛肉類
+            { cat: "牛肉類", name: "五香牛肉干", unit: "1包", price: 300 },
+            { cat: "牛肉類", name: "黑胡椒牛肉干", unit: "1包", price: 300 },
+            { cat: "牛肉類", name: "牛肉角", unit: "1包", price: 300 },
+            { cat: "牛肉類", name: "牛腱條", unit: "1包", price: 150 },
+            { cat: "牛肉類", name: "牛腱", unit: "1包", price: 120 },
+
+            // 休閒食品類
+            { cat: "休閒食品類", name: "(新品)黑秈糙米花生米香(純素)", unit: "1包", price: 150 },
+            { cat: "休閒食品類", name: "(新品)魚池鄉香菇(純素)", unit: "1包", price: 450 },
+            { cat: "休閒食品類", name: "(新品)魚池鄉鈕扣菇(純素)", unit: "1包", price: 315 },
+            { cat: "休閒食品類", name: "(新品)米脆片(純素)", unit: "1包", price: 100 },
+            { cat: "休閒食品類", name: "(新品)麻辣鴨血", unit: "1包", price: 150 },
+            { cat: "休閒食品類", name: "香滷蛋(蛋奶素)", unit: "1包", price: 150 },
+            { cat: "休閒食品類", name: "燕麥脆餅(奶素)", unit: "1包", price: 150 },
+            { cat: "休閒食品類", name: "小鳳梨酥(蛋奶素)", unit: "1包", price: 100 },
+            { cat: "休閒食品類", name: "黑米燒海苔脆片(純素)", unit: "1包", price: 100 },
+            { cat: "休閒食品類", name: "台灣青仁黑豆(純素)", unit: "1包", price: 50 },
+            { cat: "休閒食品類", name: "香鐵蛋(蛋素)", unit: "1包", price: 80, oos: true },
+            { cat: "休閒食品類", name: "蜂蜜乳酪絲(奶素)", unit: "1包", price: 200 },
+            { cat: "休閒食品類", name: "辣味乳酪絲(奶素)", unit: "1包", price: 200 },
+            { cat: "休閒食品類", name: "波羅蜜(純素)", unit: "1包", price: 100 },
+            { cat: "休閒食品類", name: "芋頭條(純素)", unit: "1包", price: 100 },
+            { cat: "休閒食品類", name: "綜合蔬果乾(純素)", unit: "1包", price: 100 },
+            { cat: "休閒食品類", name: "素香鬆(純素)", unit: "1包", price: 100 },
+            { cat: "休閒食品類", name: "素蹄筋(純素)", unit: "1包", price: 100 },
+            { cat: "休閒食品類", name: "辣素蹄筋(純素)", unit: "1包", price: 100 },
+            { cat: "休閒食品類", name: "素黑胡椒肉條(純素)", unit: "1包", price: 150 },
+            { cat: "休閒食品類", name: "素蜜汁肉干(純素)", unit: "1包", price: 150 },
+            { cat: "休閒食品類", name: "素香菇素蹄(奶素)", unit: "1包", price: 150 },
+            { cat: "休閒食品類", name: "五香蒟蒻干(純素)", unit: "1包", price: 150 },
+
+            // 堅果類
+            { cat: "堅果類", name: "紅茶香瓜子(純素)", unit: "1包", price: 50 },
+            { cat: "堅果類", name: "焦糖香瓜子(純素)", unit: "1包", price: 50 },
+            { cat: "堅果類", name: "奶香葵瓜子(奶素)", unit: "1包", price: 50 },
+            { cat: "堅果類", name: "杏仁小魚干", unit: "1包", price: 100 },
+            { cat: "堅果類", name: "起司蠶豆酥", unit: "1包", price: 100 },
+            { cat: "堅果類", name: "竹炭花生(純素)", unit: "1包", price: 100 },
+            { cat: "堅果類", name: "椒麻花生(純素)", unit: "1包", price: 150 },
+            { cat: "堅果類", name: "剝皮辣花生", unit: "1包", price: 150 },
+            { cat: "堅果類", name: "香酥腰果", unit: "1包", price: 200 },
+            { cat: "堅果類", name: "原味腰果(純素)", unit: "1包", price: 200 },
+
+            // 豆干類
+            { cat: "★非基因改造豆干類★", name: "椒麻豆丁(純素)", unit: "1包", price: 50 },
+            { cat: "★非基因改造豆干類★", name: "香蒜粄條", unit: "1包", price: 100 },
+            { cat: "★非基因改造豆干類★", name: "沙茶豆干", unit: "1包", price: 100 },
+            { cat: "★非基因改造豆干類★", name: "蒜片豆干", unit: "1包", price: 100 },
+            { cat: "★非基因改造豆干類★", name: "[辣]鹹酥雞風味豆干(純素)", unit: "1包", price: 100 },
+            { cat: "★非基因改造豆干類★", name: "Q心豆干(純素)", unit: "1包", price: 100 },
+            { cat: "★非基因改造豆干類★", name: "黑豆干(純素)", unit: "1包", price: 100 },
+            { cat: "★非基因改造豆干類★", name: "香Q條豆干(純素)", unit: "1包", price: 100 },
+            { cat: "★非基因改造豆干類★", name: "沙茶辣豆干(純素)", unit: "1包", price: 100 },
+            { cat: "★非基因改造豆干類★", name: "黃金條辣豆干(純素)", unit: "1包", price: 100 },
+
+            // 果乾類
+            { cat: "果乾類", name: "化核李", unit: "1包", price: 100, oos: true },
+            { cat: "果乾類", name: "綜合梅", unit: "1包", price: 50 },
+            { cat: "果乾類", name: "原味梅片", unit: "1包", price: 50 },
+            { cat: "果乾類", name: "檸檬果乾", unit: "1包", price: 50 },
+            { cat: "果乾類", name: "仙楂餅", unit: "1包", price: 50 },
+            { cat: "果乾類", name: "蘋果果乾", unit: "1包", price: 100 },
+            { cat: "果乾類", name: "一口梅肉", unit: "1包", price: 100 },
+            { cat: "果乾類", name: "台灣脆梅", unit: "1包", price: 100 },
+            { cat: "果乾類", name: "果實感芒果乾", unit: "1包", price: 100 },
+            { cat: "果乾類", name: "蕃茄果乾", unit: "1包", price: 100 },
+            { cat: "果乾類", name: "鳳梨果乾", unit: "1包", price: 100 },
+            { cat: "果乾類", name: "草莓果乾", unit: "1包", price: 100 },
+            { cat: "果乾類", name: "香橙片", unit: "1包", price: 100 },
+            { cat: "果乾類", name: "紅薑黃橄欖", unit: "1包", price: 100 },
+            { cat: "果乾類", name: "黃草橄欖", unit: "1包", price: 100 },
+            { cat: "果乾類", name: "甘甜梅", unit: "1包", price: 100 },
+            { cat: "果乾類", name: "葡萄乾", unit: "1包", price: 100 },
+            { cat: "果乾類", name: "梅粉葡萄乾", unit: "1包", price: 100 },
+            { cat: "果乾類", name: "芭樂乾", unit: "1包", price: 100 },
+            { cat: "果乾類", name: "哈密瓜乾", unit: "1包", price: 120, oos: true },
+            { cat: "果乾類", name: "蔓越莓乾", unit: "1包", price: 150 },
+            { cat: "果乾類", name: "芒果乾", unit: "1包", price: 150 },
+            { cat: "果乾類", name: "野生藍莓乾", unit: "1包", price: 150 },
+            { cat: "果乾類", name: "愛文芒果乾", unit: "1包", price: 200, oos: true },
+
+            // 穀物類
+            { cat: "穀物類", name: "紅藜麥(純素)", unit: "1包", price: 190 },
+            { cat: "用品類", name: "濕紙巾（10抽）", unit: "1包", price: 15 },
+            
+            // 沖泡與咖啡
+            { cat: "沖泡類", name: "[新品]麥茶茶包", unit: "1包", price: 150 },
+            { cat: "沖泡類", name: "凍頂烏龍茶茶包", unit: "1包", price: 150 },
+            { cat: "沖泡類", name: "小葉紅紅茶茶包", unit: "1包", price: 150 },
+
+            { cat: "皇啡咖啡", name: "肯亞濾掛式咖啡", unit: "8包1盒", price: 200 },
+            { cat: "皇啡咖啡", name: "蘇門答臘濾掛式咖啡", unit: "8包1盒", price: 200 },
+            { cat: "皇啡咖啡", name: "耶加雪菲-咖啡豆", unit: "包", price: 250 },
+            { cat: "皇啡咖啡", name: "早餐配方-咖啡豆", unit: "包", price: 170 },
+            { cat: "皇啡咖啡", name: "巴西嘉年華-咖啡豆", unit: "包", price: 200 },
+            { cat: "皇啡咖啡", name: "曼特寧-咖啡豆", unit: "包", price: 250 },
+            { cat: "皇啡咖啡", name: "極致老饕-咖啡豆", unit: "包", price: 180 },
+            { cat: "皇啡咖啡", name: "古吉罕貝拉-咖啡豆", unit: "包", price: 300 },
+
+            // 呷鶴麵與滴雞精
+            { cat: "呷鶴麵", name: "乾拌麵-酢醬", unit: "份", price: 40 },
+            { cat: "呷鶴麵", name: "乾拌麵-四川椒麻", unit: "份", price: 40 },
+            { cat: "呷鶴麵", name: "乾拌麵-麻辣醬香", unit: "份", price: 40 },
+            { cat: "滴雞精(呷卡鶴)", name: "【禮盒】氣冷雞滴雞精", unit: "10包1盒", price: 1000 },
+            { cat: "滴雞精(呷卡鶴)", name: "氣冷雞滴雞精", unit: "1包", price: 105 },
+
+            // 餅乾類專區
+            { cat: "餅乾類-TOP首選", name: "(新品)黑芝麻牛軋糖", unit: "1包", price: 100 },
+            { cat: "餅乾類-TOP首選", name: "芝麻核桃糕", unit: "1包", price: 100 },
+            { cat: "餅乾類-TOP首選", name: "黃金芒果牛軋糖", unit: "1包", price: 130 },
+            { cat: "餅乾類-TOP首選", name: "原味米牛軋糖", unit: "1包", price: 250 },
+            { cat: "餅乾類-TOP首選", name: "南棗核桃糕", unit: "1包", price: 270 },
+
+            { cat: "餅乾類", name: "(新品)椒麻辣鬆餅", unit: "1包", price: 50 },
+            { cat: "餅乾類", name: "(新品)雞汁青蔥捲捲餅", unit: "1包", price: 50 },
+            { cat: "餅乾類", name: "(新品)蒜味脆貝餅", unit: "1包", price: 50 },
+            { cat: "餅乾類", name: "(新品)辣味起司洋芋片", unit: "1包", price: 50 },
+            { cat: "餅乾類", name: "(新品)椒香玉米球", unit: "1包", price: 50 },
+            { cat: "餅乾類", name: "起司爆米花-分享桶", unit: "1桶", price: 150 },
+            { cat: "餅乾類", name: "魚薯條", unit: "1包", price: 55 },
+            { cat: "餅乾類", name: "蚵仔酥-鹹蛋黃", unit: "1包", price: 55 },
+            { cat: "餅乾類", name: "起司-三角脆薯", unit: "1包", price: 50 },
+            { cat: "餅乾類", name: "海苔-三角脆薯", unit: "1包", price: 50 },
+            { cat: "餅乾類", name: "洋芋片(多種口味)", unit: "1包", price: 50 },
+            { cat: "餅乾類", name: "卡哩卡哩(多種口味)", unit: "1包", price: 50 },
+            { cat: "餅乾類", name: "飛機餅", unit: "1包", price: 50 },
+            { cat: "餅乾類", name: "菜脯風味餅", unit: "1包", price: 50 },
+
+            // 禮盒系列
+            { cat: "禮盒系列", name: "雙雙對對禮盒 (特製+原檸)", unit: "1盒", price: 350 },
+            { cat: "禮盒系列", name: "【素食】花開富貴禮盒", unit: "1盒", price: 600 },
+            { cat: "禮盒系列", name: "【素食】濃情蜜意禮盒", unit: "1盒", price: 500 },
+            { cat: "禮盒系列", name: "事事如意禮盒", unit: "1盒", price: 750 },
+            { cat: "禮盒系列", name: "三陽開泰禮盒", unit: "1盒", price: 550 },
+            { cat: "禮盒系列", name: "五福臨門禮盒", unit: "1盒", price: 950 },
+            { cat: "禮盒系列", name: "山珍海味禮盒", unit: "1盒", price: 1050 },
+            { cat: "禮盒系列", name: "芋頭麻糬酥禮盒", unit: "1盒", price: 350 },
+            { cat: "禮盒系列", name: "土鳳梨酥禮盒", unit: "1盒", price: 350 },
+
+            // 包裝袋項目
+            { cat: "包裝袋", name: "塑膠袋3號", unit: "個", price: 1 },
+            { cat: "包裝袋", name: "塑膠袋5號", unit: "個", price: 1 },
+            { cat: "包裝袋", name: "塑膠袋7號", unit: "個", price: 2 },
+            { cat: "包裝袋", name: "牛皮紙袋", unit: "個", price: 5 }
+        ];
+
+        const listContainer = document.getElementById('listContainer');
+        const navContainer = document.getElementById('categoryNav');
+        const state = products.map(() => ({ checked: false, qty: 1 }));
+
+        function init() {
+            renderNav();
+            renderList(products);
+        }
+
+        function renderNav() {
+            const categories = [...new Set(products.map(p => p.cat))];
+            navContainer.innerHTML = categories.map(cat => `
+                <button onclick="scrollToCat('${cat}')" class="flex-none bg-white border border-slate-300 px-4 py-2 rounded-full text-sm font-bold shadow-sm active:bg-red-50 active:text-red-600 transition">
+                    ${cat.replace(/[★※]/g, '')}
+                </button>
+            `).join('');
+        }
+
+        function renderList(data) {
+            listContainer.innerHTML = '';
+            let currentCat = '';
+
+            data.forEach((item) => {
+                const originalIndex = products.indexOf(item);
+                
+                if (item.cat !== currentCat) {
+                    currentCat = item.cat;
+                    const catDiv = document.createElement('div');
+                    catDiv.id = `cat-${currentCat}`;
+                    catDiv.className = "flex items-center gap-2 pt-6 pb-2 sticky top-[120px] bg-slate-50 z-20";
+                    catDiv.innerHTML = `<span class="bg-red-600 w-1.5 h-5 rounded-full"></span><h2 class="font-black text-slate-800 tracking-tight">${currentCat}</h2>`;
+                    listContainer.appendChild(catDiv);
+                }
+
+                const card = document.createElement('div');
+                card.className = `item-card bg-white border border-slate-200 rounded-2xl p-4 flex items-center shadow-sm transition-all ${state[originalIndex].checked ? 'selected border-red-500 ring-1 ring-red-500' : ''} ${item.oos ? 'oos-card' : ''}`;
+                card.id = `card-${originalIndex}`;
+                card.innerHTML = `
+                    <div class="mr-4 flex-shrink-0">
+                        <input type="checkbox" id="check-${originalIndex}" ${state[originalIndex].checked ? 'checked' : ''} 
+                               ${item.oos ? 'disabled' : ''}
+                               onchange="toggleItem(${originalIndex})" class="w-6 h-6 rounded-lg text-red-600 focus:ring-red-500 cursor-pointer">
+                    </div>
+                    <div class="flex-grow ${item.oos ? '' : 'cursor-pointer'}" onclick="${item.oos ? '' : `clickRow(${originalIndex})`}">
+                        <h3 class="font-bold text-slate-800 leading-tight">${item.name} ${item.oos ? '<span class="text-red-500 text-xs">(缺貨)</span>' : ''}</h3>
+                        <p class="text-xs text-slate-400 mt-1 font-medium italic">$${item.price} / ${item.unit}</p>
+                    </div>
+                    <div class="flex items-center bg-slate-100 rounded-xl p-1 ml-2">
+                        <button onclick="changeQty(${originalIndex}, -1)" ${item.oos ? 'disabled' : ''} class="w-8 h-8 flex items-center justify-center font-black text-slate-400 active:text-red-600 disabled:opacity-30">-</button>
+                        <input type="number" id="qty-${originalIndex}" value="${state[originalIndex].qty}" min="1" readonly
+                               class="w-8 text-center bg-transparent font-bold text-slate-800 focus:outline-none">
+                        <button onclick="changeQty(${originalIndex}, 1)" ${item.oos ? 'disabled' : ''} class="w-8 h-8 flex items-center justify-center font-black text-slate-400 active:text-red-600 disabled:opacity-30">+</button>
+                    </div>
+                `;
+                listContainer.appendChild(card);
+            });
+        }
+
+        function scrollToCat(catName) {
+            const el = document.getElementById(`cat-${catName}`);
+            if (el) {
+                const offset = el.offsetTop - 130;
+                window.scrollTo({ top: offset, behavior: 'smooth' });
+            }
+        }
+
+        function clickRow(idx) {
+            state[idx].checked = !state[idx].checked;
+            updateUI(idx);
+        }
+
+        function toggleItem(idx) {
+            state[idx].checked = document.getElementById(`check-${idx}`).checked;
+            updateUI(idx);
+        }
+
+        function changeQty(idx, delta) {
+            state[idx].qty = Math.max(1, state[idx].qty + delta);
+            if (delta > 0) state[idx].checked = true;
+            updateUI(idx);
+        }
+
+        function updateUI(idx) {
+            const card = document.getElementById(`card-${idx}`);
+            const check = document.getElementById(`check-${idx}`);
+            const qtyInput = document.getElementById(`qty-${idx}`);
+            
+            if (card) {
+                if (state[idx].checked) card.classList.add('selected', 'border-red-500', 'ring-1', 'ring-red-500');
+                else card.classList.remove('selected', 'border-red-500', 'ring-1', 'ring-red-500');
+            }
+            if (check) check.checked = state[idx].checked;
+            if (qtyInput) qtyInput.value = state[idx].qty;
+            
+            calculate();
+        }
+
+        function calculate() {
+            let total = 0;
+            let count = 0;
+            state.forEach((s, i) => {
+                if (s.checked) {
+                    total += products[i].price * s.qty;
+                    count++;
+                }
+            });
+            document.getElementById('totalAmount').innerText = total.toLocaleString();
+            document.getElementById('totalItems').innerText = count;
+        }
+
+        function handleSearch() {
+            const term = document.getElementById('searchInput').value.toLowerCase();
+            const filtered = products.filter(p => p.name.toLowerCase().includes(term) || p.cat.toLowerCase().includes(term));
+            renderList(filtered);
+        }
+
+        function resetOrder() {
+            if (!confirm("確定要重設清單嗎？")) return;
+            state.forEach(s => { s.checked = false; s.qty = 1; });
+            renderList(products);
+            calculate();
+        }
+
+        function copyOrder() {
+            let text = "🛒 【垂坤食品訂購清單】\n";
+            text += "====================\n";
+            let hasSelection = false;
+            let totalAmount = 0;
+
+            products.forEach((p, i) => {
+                if (state[i].checked) {
+                    const sub = p.price * state[i].qty;
+                    // 優化輸出格式，避免數字連在一起
+                    text += `● ${p.name}\n   數量：${state[i].qty} x (${p.unit}) 小計：$${sub}\n`;
+                    totalAmount += sub;
+                    hasSelection = true;
+                }
+            });
+
+            if (!hasSelection) {
+                alert("您還沒有勾選任何商品喔！");
+                return;
+            }
+
+            text += "====================\n";
+            text += `💰 預估總金額：$${totalAmount} 元\n`;
+            text += `📅 訂購日期：${new Date().toLocaleDateString()}\n`;
+
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            document.body.appendChild(textArea);
+            textArea.select();
+            try {
+                document.execCommand('copy');
+                showToast("✅ 清單已複製到剪貼簿");
+            } catch (err) {
+                alert("複製失敗，請手動選取");
+            }
+            document.body.removeChild(textArea);
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.innerText = msg;
+            toast.style.opacity = '1';
+            setTimeout(() => { toast.style.opacity = '0'; }, 2000);
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>
+
